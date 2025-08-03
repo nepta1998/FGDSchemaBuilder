@@ -54,9 +54,10 @@ const FGDBuilder = () => {
         if (window.confirm('Are you sure you want to reset all data? This action cannot be undone.')) {
             dispatch({ type: 'RESET_FGD' });
             setFilterText(''); // Clear the filter text
+            setAlphabeticalOrder(false); // Turn off Alphabetical Order
+            setIsDragModeEnabled(false); // Turn off Drag Mode
         }
     };
-
 
     const handleExport = () => {
         try {

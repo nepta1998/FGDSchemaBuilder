@@ -4,7 +4,7 @@
 */
 
 /* Default (Light) Theme */
-:root {
+body.light, :root.light {
   --bg-color: #f4f4f9;
   --panel-bg-color: #ffffff;
   --text-color: #333333;
@@ -23,6 +23,11 @@
   --input-text-color: #333;
   --code-bg-color: #f8f8f8;
   --code-text-color: #333;
+      --entity-label: #1976d2;      /* Strong blue for entity names/labels */
+    --property-label: #388e3c;    /* Strong green for property labels */
+    --add-property-btn: #ff9800;  /* Orange for add property button */
+    --add-property-btn-hover: #f57c00;
+    --panel-header: #333;
 }
 
 /* Dark Theme */
@@ -45,6 +50,12 @@
   --input-text-color: #f5f5f5;
   --code-bg-color: #282c34;
   --code-text-color: #abb2bf;
+   /* New Variables for Alternate Theme */
+  --entity-label: #b5e0ff;      /* Bright blue for entity names/labels */
+  --property-label: #4caf50;    /* Bright green for property labels */
+  --add-property-btn: #ffb300;  /* Bright orange for add property button */
+  --add-property-btn-hover: #ffa000;
+  --panel-header: #b5e0ff;      /* Bright blue for panel headers */
 }
 
 /*
@@ -279,6 +290,8 @@ label {
   padding-top: 1rem;
   border-top: 1px dashed var(--border-color);
   grid-column: 1 / -1;
+    color: var(--property-label, #388e3c); /* Use the property label color */
+    font-weight: 500;
 }
 
 .choices-list {
@@ -480,6 +493,7 @@ label {
 /* Light mode overrides */
 body.light,
 :root.light {
+    --panel-header: #333;
     --bg-main: #f5f7fa;
     --bg-panel: #fff;
     --bg-accent: #f0f4f8;
@@ -495,4 +509,48 @@ body.light,
     --shadow: 0 2px 10px rgba(0,0,0,0.06);
     --entity-name: #1976d2;      /* A strong blue for entity names */
     --property-name: #388e3c;    /* A strong green for property names */
+}
+
+.panel-header,
+.panel h2,
+.panel h3 {
+    color: var(--panel-header, #333);
+}
+
+
+/* added variables*/
+
+.entity-list-header h2,
+.entity-name {
+    color: var(--entity-label, #b5e0ff);
+}
+
+.property-list-header h3,
+.form-group label {
+    color: var(--property-label, #4caf50);
+}
+
+.add-property-btn {
+    background: var(--add-property-btn, #ffb300);
+    color: #fff;
+}
+.add-property-btn:hover {
+    background: var(--add-property-btn-hover, #ffa000);
+}
+
+.panel-header,
+.panel h2,
+.panel h3 {
+    color: var(--panel-header, #b5e0ff);
+}
+
+body.light .entity-name {
+    color: #04c8c8 !important;
+}
+
+body.light .entity-editor-placeholder h2 {
+    color: #f5e72d;
+}
+body.light .entity-editor-placeholder p {
+    color: #4deadf;
 }

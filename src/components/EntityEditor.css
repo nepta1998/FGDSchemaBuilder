@@ -34,7 +34,7 @@
 
 .form-group label {
     font-weight: 500;
-    color: #b5e0ff;
+    color: var(--property-label, #388e3c);
     margin-bottom: 2px;
 }
 

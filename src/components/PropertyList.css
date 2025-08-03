@@ -69,3 +69,13 @@
     font-style: italic;
     margin-top: 8px;
 }
+
+.property-list-header h3 {
+    color: var(--property-label, #4caf50);
+}
+
+.property-row label,
+.property-row .property-name {
+    color: var(--property-label, #4caf50);
+    font-weight: 500;
+}

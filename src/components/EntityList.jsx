@@ -46,7 +46,7 @@ const SortableEntityItem = ({ entity, isSelected, onSelect, onDelete, isDragMode
                 className={`entity-list-item ${isSelected ? 'selected' : ''}`}
                 onClick={() => onSelect(entity.id)}
             >
-                <span className="entity-name">{entity.name}</span>
+            <span className="entity-name">{entity.name}</span>
                 <button onClick={(e) => onDelete(e, entity.id)} title="Delete Entity">&times;</button>
             </div>
         </div>
