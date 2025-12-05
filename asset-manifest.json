@@ -1,15 +1,15 @@
 {
   "files": {
     "main.css": "/FGDSchemaBuilder/static/css/main.ddac6ae1.css",
-    "main.js": "/FGDSchemaBuilder/static/js/main.21c803e7.js",
+    "main.js": "/FGDSchemaBuilder/static/js/main.bd5cb214.js",
     "static/js/453.246174a4.chunk.js": "/FGDSchemaBuilder/static/js/453.246174a4.chunk.js",
     "index.html": "/FGDSchemaBuilder/index.html",
     "main.ddac6ae1.css.map": "/FGDSchemaBuilder/static/css/main.ddac6ae1.css.map",
-    "main.21c803e7.js.map": "/FGDSchemaBuilder/static/js/main.21c803e7.js.map",
+    "main.bd5cb214.js.map": "/FGDSchemaBuilder/static/js/main.bd5cb214.js.map",
     "453.246174a4.chunk.js.map": "/FGDSchemaBuilder/static/js/453.246174a4.chunk.js.map"
   },
   "entrypoints": [
     "static/css/main.ddac6ae1.css",
-    "static/js/main.21c803e7.js"
+    "static/js/main.bd5cb214.js"
   ]
 }
