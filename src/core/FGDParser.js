@@ -56,16 +56,23 @@ function parseFlags(flagsLine) {
     if (!blockContentMatch) return [];
 
     const content = blockContentMatch[1];
-    // Regex to find: 123 : "My Flag" : 0 or 1
-    const flagRegex = /(\d+)\s*:\s*"([^"]+)"\s*:\s*(\d)/g;
-    let match;
-    while ((match = flagRegex.exec(content)) !== null) {
-        const [, value, label, isDefault] = match;
-        options.push({
-            value: parseInt(value, 10),
-            label: label,
-            default: !!parseInt(isDefault, 10),
-        });
+    // Split by lines, keep comments and flag definitions
+    const lines = content.split('\n').map(line => line.trim()).filter(Boolean);
+
+    for (const line of lines) {
+        if (line.startsWith('//')) {
+            options.push({ type: 'comment', text: line.replace(/^\/\/\s?/, '') });
+            continue;
+        }
+        const flagMatch = line.match(/^(\d+)\s*:\s*"([^"]+)"\s*:\s*(\d)/);
+        if (flagMatch) {
+            options.push({
+                type: 'flag',
+                value: parseInt(flagMatch[1], 10),
+                label: flagMatch[2],
+                default: !!parseInt(flagMatch[3], 10),
+            });
+        }
     }
     return options;
 }
@@ -98,69 +105,80 @@ function parseChoices(choiceBlock) {
  */
 function parseEntityBody(bodyText) {
     const properties = [];
-    // Split by newline, then filter out empty or comment-only lines
-    const lines = bodyText.trim().split('\n')
-        .map(line => line.trim())
-        .filter(line => line && !line.startsWith('//'));
+    const lines = bodyText.trim().split('\n').map(line => line.trim()).filter(line => line);
 
     for (let i = 0; i < lines.length; i++) {
         let line = lines[i];
 
-        // Check for block properties like `spawnflags` or `choices`
-        const isBlockProp = line.includes('=') && (line.includes('(flags)') || line.includes('(choices)'));
+        // Multi-line block property (e.g. delay(choices) : "Desc" : 0 = [ ... ])
+        // Updated regex to handle optional description and default value before the equals sign
+        const blockPropMatch = line.match(/^([a-zA-Z0-9_]+)\s*\((\w+)\)\s*(?::\s*"([^"]*)")?\s*(?::\s*(-?[\d.\s]+|"[^"]*"))?\s*=\s*$/i);
 
-        if (isBlockProp) {
+        if (blockPropMatch && lines[i + 1] && lines[i + 1].startsWith('[')) {
+            const [, name, type, displayName, defaultValue] = blockPropMatch;
             let blockContent = '';
-            // Consume lines until we find the closing bracket
-            for (let j = i + 1; j < lines.length; j++) {
-                if (lines[j].includes(']')) {
-                    blockContent += lines[j].substring(0, lines[j].indexOf(']'));
-                    i = j; // Move the outer loop index forward
+            i++; // Move to the line with [
+            while (i < lines.length) {
+                if (lines[i].includes(']')) {
+                    blockContent += lines[i].replace(']', '');
                     break;
                 }
-                blockContent += lines[j] + '\n';
+                blockContent += lines[i] + '\n';
+                i++;
             }
-
-            const propRegex = /(\w+)\s*\((\w+)\)\s*(?::\s*"([^"]*)")?\s*(?::\s*(-?[\d.\s]+|"[^"]*"))?/;
-            const propMatch = line.match(propRegex);
-            if (!propMatch) continue;
-
-            const [, name, type, displayName, defaultValue] = propMatch;
             const isFlags = type.toLowerCase() === 'flags';
+            const isChoices = type.toLowerCase() === 'choices';
+            properties.push({
+                id: crypto.randomUUID(),
+                name: name || '',
+                type: type || 'string',
+                displayName: displayName || name,
+                defaultValue: defaultValue ? defaultValue.trim() : '',
+                description: '',
+                flags: isFlags ? parseFlags(`[${blockContent}]`) : undefined,
+                options: isChoices ? parseChoices(blockContent) : [],
+            });
+            continue;
+        }
 
+        // Single-line block property (e.g. delay(choices) = [ ... ])
+        const singleLineBlockMatch = line.match(/^([a-zA-Z0-9_]+)\s*\((\w+)\)\s*=\s*\[([\s\S]*)\]$/i);
+        if (singleLineBlockMatch) {
+            const [, name, type, blockContent] = singleLineBlockMatch;
+            const isFlags = type.toLowerCase() === 'flags';
+            const isChoices = type.toLowerCase() === 'choices';
+            properties.push({
+                id: crypto.randomUUID(),
+                name: name || '',
+                type: type || 'string',
+                displayName: name,
+                defaultValue: '',
+                description: '',
+                flags: isFlags ? parseFlags(`[${blockContent}]`) : undefined,
+                options: isChoices ? parseChoices(blockContent) : [],
+            });
+            continue;
+        }
+
+        // Standard, single-line property
+        const propRegex = /([a-zA-Z0-9_]+)\s*\((\w+)\)\s*(?::\s*"([^"]*)")?\s*(?::\s*(-?[\d.\s]+|"[^"]*"))?\s*(?::\s*"([^"]*)")?/;
+        const propMatch = line.match(propRegex);
+
+        if (propMatch) {
+            const [, name, type, displayName, defaultValue, description] = propMatch;
             properties.push({
                 id: crypto.randomUUID(),
                 name: name || '',
                 type: type || 'string',
                 displayName: displayName || name,
                 defaultValue: defaultValue ? defaultValue.replace(/"/g, '').trim() : '',
-                description: '', // Block props don't have a trailing description
-                options: isFlags ? parseFlags(`[${blockContent}]`) : parseChoices(blockContent),
+                description: description || '',
             });
-
-        } else {
-            // Handle standard, single-line properties
-            // Regex for standard properties: name(type) : "Display Name" : "Default Value" : "Description"
-            // Parts are optional, so we use non-capturing groups `(?:...)` and make them optional `?`.
-            const propRegex = /(\w+)\s*\((\w+)\)\s*(?::\s*"([^"]*)")?\s*(?::\s*(-?[\d.\s]+|"[^"]*"))?\s*(?::\s*"([^"]*)")?/;
-            const propMatch = line.match(propRegex);
-
-            if (propMatch) {
-                const [, name, type, displayName, defaultValue, description] = propMatch;
-                properties.push({
-                    id: crypto.randomUUID(),
-                    name: name || '',
-                    type: type || 'string',
-                    displayName: displayName || name, // Default to name if no display name
-                    // Clean up default value (remove quotes)
-                    defaultValue: defaultValue ? defaultValue.replace(/"/g, '').trim() : '',
-                    description: description || '',
-                });
-            }
         }
     }
     return properties;
 }
+
 
 /**
  * Parses a raw FGD file string into a structured JSON object.
@@ -204,7 +222,7 @@ export function parseFGD(fgdText) {
     schema.metadata.includes = includeMatches.map(match => match[1]);
 
     // 4. Parse entity blocks (same as before)
-    const entityRegex = /@(\w+)\s*([\s\S]*?)\s*=\s*(\w+)\s*(?::\s*"([^"]*)")?\s*(?:\[([\s\S]*?)\])?/g;
+    const entityRegex = /@([a-zA-Z]+)\s*([\s\S]*?)=\s*([^:[\n]+)\s*(?::\s*"([^"]*)")?\s*\[([\s\S]*?)\]/g;
 
     let match;
     while ((match = entityRegex.exec(restText)) !== null) {
@@ -223,6 +241,11 @@ export function parseFGD(fgdText) {
             helpers: parseHelpers(header || ''),
             properties: body ? parseEntityBody(body) : [],
         };
+
+        // Fix: Treat worldspawn as solidclass
+        if (entity.name.trim().toLowerCase() === 'worldspawn') {
+            entity.classType = 'SolidClass';
+        }
 
         schema.entities.push(entity);
     }
