@@ -3,6 +3,8 @@
 (Personal text from main programmer Chuma)
 FGD Schema Builder is a React script i've made not so long ago, the idea started via a suggestion of my friend Lavender, then i proceeded to sit down the code to experiment and at least do some automation on the editing of FGD files for the level editor Trenchbroom, associated with Quake family branch games and possibly Godot... i've got help from a lot of friends and people from the Quake community, this project was not easy... i was happy with doing this and attempting to make an automation script even for experimental purposes, even if it's not optimal, hope you enjoy this documentation, thank you in advance)
 
+Note as of 1/22/2026 -- 22/01/2026 : The script is experimental as React can't have a fully functional parser and editor within the code without having some gaps, so this script/web-script is just demonstrative... In the future i hope to create this web script with a fully proper back-end and database... However the parserFGD script (that only extracts the info of the FGD files) works perfectly well. - Chuma
+
 Proceeding now with the formal talk of the project.
 
 The app will be referred as SB for simplification.
