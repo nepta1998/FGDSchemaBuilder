@@ -32,6 +32,21 @@ export const PropertyEditor = ({ entityId, property }) => {
         }
     };
 
+    const handleAddFlag = () => {
+    dispatch({ type: 'ADD_FLAG', payload: { entityId, propertyId: property.id } });
+};
+
+const handleUpdateFlag = (flagId, updates) => {
+    dispatch({
+        type: 'UPDATE_FLAG',
+        payload: { entityId, propertyId: property.id, flagId, updates },
+    });
+};
+
+const handleDeleteFlag = (flagId) => {
+    dispatch({ type: 'DELETE_FLAG', payload: { entityId, propertyId: property.id, flagId } });
+};
+    
     const ChoicesEditor = ({ entityId, property }) => {
         const handleAddChoice = () => {
             dispatch({ type: 'ADD_CHOICE', payload: { entityId, propertyId: property.id } });
@@ -47,6 +62,8 @@ export const PropertyEditor = ({ entityId, property }) => {
         const handleDeleteChoice = (choiceId) => {
             dispatch({ type: 'DELETE_CHOICE', payload: { entityId, propertyId: property.id, choiceId } });
         };
+
+
 
         return (
             <div className="type-specific-editor">
@@ -85,24 +102,49 @@ export const PropertyEditor = ({ entityId, property }) => {
         if (property.type === 'choices') {
             return <ChoicesEditor entityId={entityId} property={property} />;
         }
-
+    
         if (property.type === 'flags') {
-            const items = property.flags || [];
-
+            const flags = property.flags || [];
             return (
                 <div className="type-specific-editor">
                     <h4>Flags</h4>
-                    <p style={{fontSize: '0.9em', opacity: 0.7}}>
-                        (Editor for these is not yet implemented. This is a placeholder.)
-                    </p>
-                    <ul>
-                        {items.map((item, index) => (
-                            <li key={item.id || index}>{item.value}: "{item.displayName}"</li>
+                    <div className="flags-list">
+                        {flags.map(flag => (
+                            <div key={flag.id} className="flag-row">
+                                <input
+                                    type="number"
+                                    value={flag.value}
+                                    onChange={e => handleUpdateFlag(flag.id, { value: e.target.value })}
+                                    placeholder="Value"
+                                    className="flag-input"
+                                />
+                                <input
+                                    type="text"
+                                    value={flag.label}
+                                    onChange={e => handleUpdateFlag(flag.id, { label: e.target.value })}
+                                    placeholder="Label"
+                                    className="flag-input"
+                                />
+                                <input
+                                    type="checkbox"
+                                    checked={!!flag.default}
+                                    onChange={e => handleUpdateFlag(flag.id, { default: e.target.checked })}
+                                    title="Default"
+                                />
+                                <button onClick={() => handleDeleteFlag(flag.id)} className="delete-flag-btn">
+                                    &times;
+                                </button>
+                            </div>
                         ))}
-                    </ul>
+                    </div>
+                    <button onClick={handleAddFlag} className="add-flag-btn">
+                        Add Flag
+                    </button>
                 </div>
             );
         }
+    
+        // Default: return null if no type-specific editor is needed
         return null;
     };
 

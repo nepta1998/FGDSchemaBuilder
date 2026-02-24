@@ -52,6 +52,31 @@ const fgdReducer = (state, action) => {
                 selectedEntityId: action.payload.id,
             };
 
+        case 'ADD_FLAG': {
+    const { entityId, propertyId } = action.payload;
+    return {
+        ...state,
+        entities: state.entities.map(entity =>
+            entity.id === entityId
+                ? {
+                    ...entity,
+                    properties: entity.properties.map(prop =>
+                        prop.id === propertyId
+                            ? {
+                                ...prop,
+                                flags: [
+                                    ...(prop.flags || []),
+                                    { id: crypto.randomUUID(), value: '', label: '', default: false }
+                                ]
+                            }
+                            : prop
+                    )
+                }
+                : entity
+        ),
+    };
+}    
+
         case 'ADD_ENTITY':
             const newEntity = {
                 id: crypto.randomUUID(),
@@ -162,28 +187,29 @@ const fgdReducer = (state, action) => {
             };
         }
 
+        // In your reducer (FGDContext.jsx or wherever you handle ADD_CHOICE)
         case 'ADD_CHOICE': {
             const { entityId, propertyId } = action.payload;
-            const newChoice = {
-                id: crypto.randomUUID(),
-                value: '',
-                displayName: '',
-            };
             return {
                 ...state,
-                entities: state.entities.map(entity => {
-                    if (entity.id !== entityId) return entity;
-                    return {
-                        ...entity,
-                        properties: entity.properties.map(prop => {
-                            if (prop.id !== propertyId || prop.type !== 'choices') return prop;
-                            return {
-                                ...prop,
-                                choices: [...(prop.choices || []), newChoice],
-                            };
-                        }),
-                    };
-                }),
+                entities: state.entities.map(entity =>
+                    entity.id === entityId
+                        ? {
+                            ...entity,
+                            properties: entity.properties.map(prop =>
+                                prop.id === propertyId
+                                    ? {
+                                        ...prop,
+                                        choices: [
+                                            ...(prop.choices || []),
+                                            { id: crypto.randomUUID(), value: '', displayName: '' }
+                                        ]
+                                    }
+                                    : prop
+                            )
+                        }
+                        : entity
+                ),
             };
         }
 
@@ -191,43 +217,49 @@ const fgdReducer = (state, action) => {
             const { entityId, propertyId, choiceId, updates } = action.payload;
             return {
                 ...state,
-                entities: state.entities.map(entity => {
-                    if (entity.id !== entityId) return entity;
-                    return {
-                        ...entity,
-                        properties: entity.properties.map(prop => {
-                            if (prop.id !== propertyId || prop.type !== 'choices') return prop;
-                            return {
-                                ...prop,
-                                choices: prop.choices.map(choice =>
-                                    choice.id === choiceId ? { ...choice, ...updates } : choice
-                                ),
-                            };
-                        }),
-                    };
-                }),
+                entities: state.entities.map(entity =>
+                    entity.id === entityId
+                        ? {
+                            ...entity,
+                            properties: entity.properties.map(prop =>
+                                prop.id === propertyId
+                                    ? {
+                                        ...prop,
+                                        choices: prop.choices.map(choice =>
+                                            choice.id === choiceId
+                                                ? { ...choice, ...updates }
+                                                : choice
+                                        )
+                                    }
+                                    : prop
+                            )
+                        }
+                        : entity
+                ),
             };
         }
 
-        case 'DELETE_CHOICE': {
-            const { entityId, propertyId, choiceId } = action.payload;
-            return {
-                ...state,
-                entities: state.entities.map(entity => {
-                    if (entity.id !== entityId) return entity;
-                    return {
+    case 'DELETE_CHOICE': {
+        const { entityId, propertyId, choiceId } = action.payload;
+        return {
+            ...state,
+            entities: state.entities.map(entity =>
+                entity.id === entityId
+                    ? {
                         ...entity,
-                        properties: entity.properties.map(prop => {
-                            if (prop.id !== propertyId || prop.type !== 'choices') return prop;
-                            return {
-                                ...prop,
-                                choices: prop.choices.filter(choice => choice.id !== choiceId),
-                            };
-                        }),
-                    };
-                }),
-            };
-        }
+                        properties: entity.properties.map(prop =>
+                            prop.id === propertyId
+                                ? {
+                                    ...prop,
+                                    choices: prop.choices.filter(choice => choice.id !== choiceId)
+                                }
+                                : prop
+                        )
+                    }
+                    : entity
+            ),
+        };
+}
 
         case 'DELETE_PROPERTY': {
             const { entityId, propertyId } = action.payload;
@@ -240,6 +272,55 @@ const fgdReducer = (state, action) => {
                 ),
             };
         }
+
+        case 'UPDATE_FLAG': {
+    const { entityId, propertyId, flagId, updates } = action.payload;
+    return {
+        ...state,
+        entities: state.entities.map(entity =>
+            entity.id === entityId
+                ? {
+                    ...entity,
+                    properties: entity.properties.map(prop =>
+                        prop.id === propertyId
+                            ? {
+                                ...prop,
+                                flags: prop.flags.map(flag =>
+                                    flag.id === flagId
+                                        ? { ...flag, ...updates }
+                                        : flag
+                                )
+                            }
+                            : prop
+                    )
+                }
+                : entity
+        ),
+    };
+}
+
+// Delete a flag from a property
+case 'DELETE_FLAG': {
+    const { entityId, propertyId, flagId } = action.payload;
+    return {
+        ...state,
+        entities: state.entities.map(entity =>
+            entity.id === entityId
+                ? {
+                    ...entity,
+                    properties: entity.properties.map(prop =>
+                        prop.id === propertyId
+                            ? {
+                                ...prop,
+                                flags: prop.flags.filter(flag => flag.id !== flagId)
+                            }
+                            : prop
+                    )
+                }
+                : entity
+        ),
+    };
+}
 
         case 'RESET_FGD':
             // Resets the entire state back to its initial, empty state.
