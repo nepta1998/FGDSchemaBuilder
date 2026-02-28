@@ -158,7 +158,7 @@ func parseProperties(propertiesText string) []models.Property {
 	blockContent := ""
 	for _, line := range cleanLines {
 		if findCloseBracket {
-			before, _, wasFind := strings.Cut(linea, "]")
+			before, _, wasFind := strings.Cut(line, "]")
 			if wasFind {
 				findCloseBracket = false
 				blockContent += before
