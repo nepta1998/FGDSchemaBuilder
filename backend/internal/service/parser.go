@@ -7,23 +7,27 @@ import (
 	"regexp"
 	"strconv"
 	"strings"
+
+	"github.com/google/uuid"
 )
 
-func ParseFGD(fgdText string) (models.FGD, error) {
+func ParseFGD(fgdText string) models.FGD {
 	clenedText := cleanFGD(fgdText)
-	mapSize, _ := getMapSize(clenedText)
-	includes := getInclude(clenedText)
+	mapSize, _ := parseMapSize(clenedText)
+	includes := parseIncludes(clenedText)
 
 	metadata := models.Metadata{
 		MapSize:  mapSize,
 		Includes: includes,
 	}
+	entities := parseEntityClasses(clenedText)
 
 	fgd := models.FGD{
 		Metadata: metadata,
+		Entities: entities,
 	}
 
-	return fgd, nil
+	return fgd
 }
 
 func cleanFGD(fgdText string) string {
@@ -38,7 +42,7 @@ func cleanFGD(fgdText string) string {
 	return cleanText
 }
 
-func getMapSize(cleanedText string) (*models.MapSize, error) {
+func parseMapSize(cleanedText string) (*models.MapSize, error) {
 	// Definimos el regex. Usamos backticks `` para que sea un raw string
 	// y no tener que escapar las barras invertidas.
 	re := regexp.MustCompile(`@mapsize\s*\(\s*(-?\d+)\s*,\s*(-?\d+)\s*\)`)
@@ -65,7 +69,7 @@ func getMapSize(cleanedText string) (*models.MapSize, error) {
 	}
 }
 
-func getInclude(cleanedText string) []string {
+func parseIncludes(cleanedText string) []string {
 	re := regexp.MustCompile(`@include\s*"([^"]+)"`)
 	matches := re.FindAllStringSubmatch(cleanedText, -1)
 
@@ -77,3 +81,51 @@ func getInclude(cleanedText string) []string {
 	}
 	return includes
 }
+
+func parseEntityClasses(cleanedText string) []models.Entity {
+	const pattern = `@(\w+)\s*([\s\S]*?)\s*=\s*(\w+)\s*(?::\s*"([^"]*)")?\s*(?:\[([\s\S]*?)\])?`
+	re := regexp.MustCompile(pattern)
+	matches := re.FindAllStringSubmatch(cleanedText, -1)
+
+	entities := make([]models.Entity, 0, len(matches))
+	for _, m := range matches {
+		if len(m) < 5 {
+			continue
+		}
+		entity := models.Entity{
+			ID:          uuid.New().String(),
+			ClassType:   m[1],
+			Name:        m[3],
+			Description: m[4],
+			BaseClasses: parseBaseClasses(m[2]),
+			Helpers:     make(models.Helpers),
+			Properties:  []models.Property{},
+		}
+		entities = append(entities, entity)
+	}
+	return entities
+}
+
+func parseBaseClasses(baseClassesText string) []string {
+	if baseClassesText == "" {
+		return []string{}
+	}
+	const pattern = `base\(([^)]+)\)`
+	matches := pattern.FindAllStringSubmatch(baseClassesText, -1)
+
+	var bases []string
+	for _, match := range matches {
+		if len(match) > 1 {
+			classes := strings.Split(match[1], ",")
+			for _, className := range classes {
+				trimmed := strings.TrimSpace(className)
+				if trimmed != "" {
+					bases = append(bases, trimmed)
+				}
+			}
+		}
+	}
+	return bases
+}
+
+// TODO: parse helpers and parse properties
