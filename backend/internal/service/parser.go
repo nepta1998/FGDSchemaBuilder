@@ -117,8 +117,7 @@ func parseBaseClasses(baseClassesText string) []string {
 	var bases []string
 	for _, match := range matches {
 		if len(match) > 1 {
-			classes := strings.Split(match[1], ",")
-			for _, className := range classes {
+			for className := range strings.SplitSeq(match[1], ",") {
 				trimmed := strings.TrimSpace(className)
 				if trimmed != "" {
 					bases = append(bases, trimmed)
