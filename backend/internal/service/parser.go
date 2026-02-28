@@ -89,7 +89,7 @@ func parseEntityClasses(cleanedText string) []models.Entity {
 
 	entities := make([]models.Entity, 0, len(matches))
 	for _, m := range matches {
-		if len(m) < 5 {
+		if len(m) < 6 {
 			continue
 		}
 		entity := models.Entity{
@@ -111,7 +111,8 @@ func parseBaseClasses(baseClassesText string) []string {
 		return []string{}
 	}
 	const pattern = `base\(([^)]+)\)`
-	matches := pattern.FindAllStringSubmatch(baseClassesText, -1)
+	re := regexp.MustCompile(pattern)
+	matches := re.FindAllStringSubmatch(baseClassesText, -1)
 
 	var bases []string
 	for _, match := range matches {
