@@ -92,14 +92,20 @@ func parseEntityClasses(cleanedText string) []models.Entity {
 		if len(m) < 6 {
 			continue
 		}
+		classType := m[1]
+		header := m[2]
+		name := m[3]
+		description := m[4]
+		body := m[5]
+
 		entity := models.Entity{
 			ID:          uuid.New().String(),
-			ClassType:   m[1],
-			Name:        m[3],
-			Description: m[4],
-			BaseClasses: parseBaseClasses(m[2]),
-			Helpers:     make(models.Helpers),
-			Properties:  []models.Property{},
+			ClassType:   classType,
+			Name:        name,
+			Description: description,
+			BaseClasses: parseBaseClasses(header),
+			Helpers:     parseHelpers(header),
+			Properties:  parseProperties(body),
 		}
 		entities = append(entities, entity)
 	}
@@ -129,3 +135,44 @@ func parseBaseClasses(baseClassesText string) []string {
 }
 
 // TODO: parse helpers and parse properties
+func parseHelpers(helpersText string) models.Helpers {
+	re := regexp.MustCompile(`(size|color)\s*\(([^)]+)\)`)
+	matches := re.FindAllStringSubmatch(helpersText, -1)
+	helpers := models.Helpers{}
+	for _, match := range matches {
+		helpers[match[1]] = strings.TrimSpace(match[2])
+	}
+	return helpers
+}
+
+func parseProperties(propertiesText string) []models.Property {
+	lines := strings.Split(propertiesText, "\n")
+	cleanLines := make([]string, 0, len(lines))
+	for _, line := range lines {
+		trimmed := strings.TrimSpace(line)
+		if trimmed != "" && !strings.HasPrefix(trimmed, "//") {
+			cleanLines = append(cleanLines, trimmed)
+		}
+	}
+	findCloseBracket := false
+	blockContent := ""
+	for _, line := range cleanLines {
+		if findCloseBracket {
+			before, _, wasFind := strings.Cut(linea, "]")
+			if wasFind {
+				findCloseBracket = false
+				blockContent += before
+				continue
+			}
+			blockContent += line + "\n"
+			continue
+		}
+		isBlockProp := strings.Contains(line, "=") &&
+			(strings.Contains(line, "(flags)") || strings.Contains(line, "(choices)"))
+		if isBlockProp {
+			blockContent = ""
+			findCloseBracket = true
+		}
+	}
+	return []models.Property{}
+}
