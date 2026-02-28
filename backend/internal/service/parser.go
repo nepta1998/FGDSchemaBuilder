@@ -12,8 +12,8 @@ import (
 func parseFGD(fgdText string) (models.FGD, error) {
 	clenedText := cleanFGD(fgdText)
 	var mapSize *models.MapSize
-	mapSize, _ = matchMapsiz(clenedText)
-	includes := matchInclude(clenedText)
+	mapSize, _ = getMapsiz(clenedText)
+	includes := getInclude(clenedText)
 
 	metadata := models.Metadata{
 		MapSize:  mapSize,
@@ -24,7 +24,7 @@ func parseFGD(fgdText string) (models.FGD, error) {
 		Metadata: metadata,
 	}
 
-	return models.FGD{}, nil
+	return fgd, nil
 }
 
 func cleanFGD(fgdText string) string {
@@ -39,7 +39,7 @@ func cleanFGD(fgdText string) string {
 	return cleanText
 }
 
-func matchMapsiz(cleanedText string) (*models.MapSize, error) {
+func getMapsiz(cleanedText string) (*models.MapSize, error) {
 	// Definimos el regex. Usamos backticks `` para que sea un raw string
 	// y no tener que escapar las barras invertidas.
 	re := regexp.MustCompile(`@mapsize\s*\(\s*(-?\d+)\s*,\s*(-?\d+)\s*\)`)
@@ -66,7 +66,7 @@ func matchMapsiz(cleanedText string) (*models.MapSize, error) {
 	}
 }
 
-func matchInclude(cleanedText string) []string {
+func getInclude(cleanedText string) []string {
 	re := regexp.MustCompile(`@include\s*"([^"]+)"`)
 	matches := re.FindAllStringSubmatch(cleanedText, -1)
 	return matches[1]
