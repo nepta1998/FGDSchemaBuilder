@@ -134,7 +134,6 @@ func parseBaseClasses(baseClassesText string) []string {
 	return bases
 }
 
-// TODO: parse helpers and parse properties
 func parseHelpers(helpersText string) models.Helpers {
 	re := regexp.MustCompile(`(size|color)\s*\(([^)]+)\)`)
 	matches := re.FindAllStringSubmatch(helpersText, -1)
