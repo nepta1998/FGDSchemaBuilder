@@ -154,25 +154,65 @@ func parseProperties(propertiesText string) []models.Property {
 			cleanLines = append(cleanLines, trimmed)
 		}
 	}
-	findCloseBracket := false
+	properties := make([]models.Property, 0, len(cleanLines))
+	propRegex := regexp.MustCompile(`(\w+)\s*\((\w+)\)\s*(?::\s*"([^"]*)")?\s*(?::\s*(-?[\d.\s]+|"[^"]*"))?\s*(?::\s*"([^"]*)")?`)
 	blockContent := ""
-	for _, line := range cleanLines {
-		if findCloseBracket {
-			before, _, wasFind := strings.Cut(line, "]")
-			if wasFind {
-				findCloseBracket = false
-				blockContent += before
-				continue
-			}
-			blockContent += line + "\n"
-			continue
-		}
+	for i := 0; i < len(cleanLines); i++ {
+		line := cleanLines[i]
 		isBlockProp := strings.Contains(line, "=") &&
 			(strings.Contains(line, "(flags)") || strings.Contains(line, "(choices)"))
 		if isBlockProp {
-			blockContent = ""
-			findCloseBracket = true
+			for j := i + 1; j < len(cleanLines); j++ {
+				before, _, wasFind := strings.Cut(line, "]")
+				if wasFind {
+					blockContent += before
+					i = j
+					break
+				}
+				blockContent += line + "\n"
+			}
+		}
+		if match := propRegex.FindStringSubmatch(line); match != nil {
+			name := match[1]
+			typeMatch := match[2]
+			displayName := match[3]
+			defaultValue := match[4]
+			description := match[5]
+			options := []models.Option{}
+			if typeMatch == "" {
+				typeMatch = "string"
+			}
+			if blockContent != "" {
+				isFlags := strings.ToLower(typeMatch) == "flags"
+				if isFlags {
+					options = parseFlags(fmt.Sprintf("[%s]", blockContent))
+				} else {
+					options = parseChoices(blockContent)
+					blockContent = ""
+				}
+			}
+			if defaultValue != "" {
+				defaultValue = strings.TrimSpace(strings.ReplaceAll(defaultValue, "\"", ""))
+			}
+			property := models.Property{
+				ID:           uuid.New().String(),
+				Name:         name,
+				Type:         typeMatch,
+				DisplayName:  displayName,
+				DefaultValue: defaultValue,
+				Description:  description,
+				Options:      options,
+			}
+			properties = append(properties, property)
 		}
 	}
-	return []models.Property{}
+	return properties
+}
+
+func parseFlags(flagsLine string) []models.Option {
+	return []models.Option{}
+}
+
+func parseChoices(choiceBlock string) []models.Option {
+	return []models.Option{}
 }
