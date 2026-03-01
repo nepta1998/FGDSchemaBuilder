@@ -33,7 +33,7 @@ func ParseFGD(fgdText string) models.FGD {
 func cleanFGD(fgdText string) string {
 	// 1. Remove comments (multiline /* */ and single line //)
 	// In Go, (?s) is the flag to make the dot (.) match newlines
-	re := regexp.MustCompile(`(?s)/\*.*?\*/|//.*`)
+	re := regexp.MustCompile(`(?s:/\*.*?\*/)|//.*`)
 	cleanText := re.ReplaceAllString(fgdText, "")
 	// 2. Normalize line endings (Windows \r\n -> Unix \n)
 	cleanText = strings.ReplaceAll(cleanText, "\r\n", "\n")
