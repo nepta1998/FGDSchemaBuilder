@@ -211,7 +211,7 @@ func parseProperties(propertiesText string) []models.Property {
 func parseFlags(flagsLine string) []models.Option {
 	re := regexp.MustCompile(`(\w+)\s*=\s*(-?\d+)`)
 	match := re.FindStringSubmatch(flagsLine)
-	if match[1] == "" {
+	if match == nil {
 		return []models.Option{}
 	}
 	re = regexp.MustCompile(`(\d+)\s*:\s*"([^"]+)"\s*:\s*(\d)`)
