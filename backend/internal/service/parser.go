@@ -43,13 +43,13 @@ func cleanFGD(fgdText string) string {
 }
 
 func parseMapSize(cleanedText string) (*models.MapSize, error) {
-	// Definimos el regex. Usamos backticks `` para que sea un raw string
-	// y no tener que escapar las barras invertidas.
+	// Define the regex. Use backticks to make it a raw string
+	// so we don't have to escape backslashes.
 	re := regexp.MustCompile(`@mapsize\s*\(\s*(-?\d+)\s*,\s*(-?\d+)\s*\)`)
-	// FindStringSubmatch devuelve un slice:
-	// match[0] es la coincidencia completa
-	// match[1] es el primer grupo (-?\d+)
-	// match[2] es el segundo grupo (-?\d+)
+	// FindStringSubmatch returns a slice:
+	// match[0] is the full match
+	// match[1] is the first group (-?\d+)
+	// match[2] is the second group (-?\d+)
 	match := re.FindStringSubmatch(cleanedText)
 	if match != nil {
 		min, err := strconv.Atoi(match[1])
