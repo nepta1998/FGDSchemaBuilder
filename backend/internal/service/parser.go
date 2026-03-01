@@ -187,8 +187,8 @@ func parseProperties(propertiesText string) []models.Property {
 					options = parseFlags(fmt.Sprintf("[%s]", blockContent))
 				} else {
 					options = parseChoices(blockContent)
-					blockContent = ""
 				}
+				blockContent = ""
 			}
 			if defaultValue != "" {
 				defaultValue = strings.TrimSpace(strings.ReplaceAll(defaultValue, "\"", ""))
@@ -209,9 +209,47 @@ func parseProperties(propertiesText string) []models.Property {
 }
 
 func parseFlags(flagsLine string) []models.Option {
-	return []models.Option{}
+	re := regexp.MustCompile(`(\w+)\s*=\s*(-?\d+)`)
+	match := re.FindStringSubmatch(flagsLine)
+	if match[1] == "" {
+		return []models.Option{}
+	}
+	re = regexp.MustCompile(`(\d+)\s*:\s*"([^"]+)"\s*:\s*(\d)`)
+	matches := re.FindAllStringSubmatch(flagsLine, -1)
+	options := make([]models.Option, 0, len(matches))
+	for _, match := range matches {
+		value, err := strconv.Atoi(match[1])
+		if err != nil {
+			continue
+		}
+		label := match[2]
+		isDefault := strings.TrimSpace(match[3]) == "1"
+		option := models.Option{
+			Value:   value,
+			Label:   label,
+			Default: isDefault,
+		}
+		options = append(options, option)
+	}
+	return options
 }
 
 func parseChoices(choiceBlock string) []models.Option {
-	return []models.Option{}
+	re := regexp.MustCompile(`(-?\d+)\s*:\s*"([^"]+)"`)
+	matches := re.FindAllStringSubmatch(choiceBlock, -1)
+	options := make([]models.Option, 0, len(matches))
+	for _, match := range matches {
+		value, err := strconv.Atoi(match[1])
+		if err != nil {
+			continue
+		}
+		label := match[2]
+
+		option := models.Option{
+			Value: value,
+			Label: label,
+		}
+		options = append(options, option)
+	}
+	return options
 }
