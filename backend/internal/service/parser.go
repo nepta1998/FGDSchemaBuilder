@@ -11,16 +11,24 @@ import (
 	"github.com/google/uuid"
 )
 
-func ParseFGD(fgdText string) models.FGD {
-	clenedText := cleanFGD(fgdText)
-	mapSize, _ := parseMapSize(clenedText)
-	includes := parseIncludes(clenedText)
+// ParserService maneja la lógica de negocio para procesar archivos FGD
+type ParserService struct{}
+
+// NewParserService crea una nueva instancia del servicio
+func NewParserService() *ParserService {
+	return &ParserService{}
+}
+
+func (s *ParserService) ParseFGD(fgdText string) models.FGD {
+	clenedText := s.cleanFGD(fgdText)
+	mapSize, _ := s.parseMapSize(clenedText)
+	includes := s.parseIncludes(clenedText)
 
 	metadata := models.Metadata{
 		MapSize:  mapSize,
 		Includes: includes,
 	}
-	entities := parseEntityClasses(clenedText)
+	entities := s.parseEntityClasses(clenedText)
 
 	fgd := models.FGD{
 		Metadata: metadata,
@@ -30,26 +38,16 @@ func ParseFGD(fgdText string) models.FGD {
 	return fgd
 }
 
-func cleanFGD(fgdText string) string {
-	// 1. Remove comments (multiline /* */ and single line //)
-	// In Go, (?s) is the flag to make the dot (.) match newlines
+func (s *ParserService) cleanFGD(fgdText string) string {
 	re := regexp.MustCompile(`(?s:/\*.*?\*/)|//.*`)
 	cleanText := re.ReplaceAllString(fgdText, "")
-	// 2. Normalize line endings (Windows \r\n -> Unix \n)
 	cleanText = strings.ReplaceAll(cleanText, "\r\n", "\n")
-	// 3. Trim leading and trailing whitespace
 	cleanText = strings.TrimSpace(cleanText)
 	return cleanText
 }
 
-func parseMapSize(cleanedText string) (*models.MapSize, error) {
-	// Define the regex. Use backticks to make it a raw string
-	// so we don't have to escape backslashes.
+func (s *ParserService) parseMapSize(cleanedText string) (*models.MapSize, error) {
 	re := regexp.MustCompile(`@mapsize\s*\(\s*(-?\d+)\s*,\s*(-?\d+)\s*\)`)
-	// FindStringSubmatch returns a slice:
-	// match[0] is the full match
-	// match[1] is the first group (-?\d+)
-	// match[2] is the second group (-?\d+)
 	match := re.FindStringSubmatch(cleanedText)
 	if match != nil {
 		min, err := strconv.Atoi(match[1])
@@ -69,7 +67,7 @@ func parseMapSize(cleanedText string) (*models.MapSize, error) {
 	}
 }
 
-func parseIncludes(cleanedText string) []string {
+func (s *ParserService) parseIncludes(cleanedText string) []string {
 	re := regexp.MustCompile(`@include\s*"([^"]+)"`)
 	matches := re.FindAllStringSubmatch(cleanedText, -1)
 
@@ -82,7 +80,7 @@ func parseIncludes(cleanedText string) []string {
 	return includes
 }
 
-func parseEntityClasses(cleanedText string) []models.Entity {
+func (s *ParserService) parseEntityClasses(cleanedText string) []models.Entity {
 	const pattern = `@(\w+)\s*([\s\S]*?)\s*=\s*(\w+)\s*(?::\s*"([^"]*)")?\s*(?:\[([\s\S]*?)\])?`
 	re := regexp.MustCompile(pattern)
 	matches := re.FindAllStringSubmatch(cleanedText, -1)
@@ -103,16 +101,16 @@ func parseEntityClasses(cleanedText string) []models.Entity {
 			ClassType:   classType,
 			Name:        name,
 			Description: description,
-			BaseClasses: parseBaseClasses(header),
-			Helpers:     parseHelpers(header),
-			Properties:  parseProperties(body),
+			BaseClasses: s.parseBaseClasses(header),
+			Helpers:     s.parseHelpers(header),
+			Properties:  s.parseProperties(body),
 		}
 		entities = append(entities, entity)
 	}
 	return entities
 }
 
-func parseBaseClasses(baseClassesText string) []string {
+func (s *ParserService) parseBaseClasses(baseClassesText string) []string {
 	if baseClassesText == "" {
 		return []string{}
 	}
@@ -134,7 +132,7 @@ func parseBaseClasses(baseClassesText string) []string {
 	return bases
 }
 
-func parseHelpers(helpersText string) models.Helpers {
+func (s *ParserService) parseHelpers(helpersText string) models.Helpers {
 	re := regexp.MustCompile(`(size|color)\s*\(([^)]+)\)`)
 	matches := re.FindAllStringSubmatch(helpersText, -1)
 	helpers := models.Helpers{}
@@ -144,7 +142,7 @@ func parseHelpers(helpersText string) models.Helpers {
 	return helpers
 }
 
-func parseProperties(propertiesText string) []models.Property {
+func (s *ParserService) parseProperties(propertiesText string) []models.Property {
 	lines := strings.Split(propertiesText, "\n")
 	cleanLines := make([]string, 0, len(lines))
 	for _, line := range lines {
@@ -184,9 +182,9 @@ func parseProperties(propertiesText string) []models.Property {
 			if blockContent != "" {
 				isFlags := strings.ToLower(typeMatch) == "flags"
 				if isFlags {
-					options = parseFlags(fmt.Sprintf("[%s]", blockContent))
+					options = s.parseFlags(fmt.Sprintf("[%s]", blockContent))
 				} else {
-					options = parseChoices(blockContent)
+					options = s.parseChoices(blockContent)
 				}
 				blockContent = ""
 			}
@@ -208,7 +206,7 @@ func parseProperties(propertiesText string) []models.Property {
 	return properties
 }
 
-func parseFlags(flagsLine string) []models.Option {
+func (s *ParserService) parseFlags(flagsLine string) []models.Option {
 	re := regexp.MustCompile(`(\w+)\s*=\s*(-?\d+)`)
 	match := re.FindStringSubmatch(flagsLine)
 	if match == nil {
@@ -234,7 +232,7 @@ func parseFlags(flagsLine string) []models.Option {
 	return options
 }
 
-func parseChoices(choiceBlock string) []models.Option {
+func (s *ParserService) parseChoices(choiceBlock string) []models.Option {
 	re := regexp.MustCompile(`(-?\d+)\s*:\s*"([^"]+)"`)
 	matches := re.FindAllStringSubmatch(choiceBlock, -1)
 	options := make([]models.Option, 0, len(matches))

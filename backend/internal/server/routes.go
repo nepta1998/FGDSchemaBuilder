@@ -1,19 +1,23 @@
 package server
 
-import "net/http"
+import (
+	"FGDSchemaBuilder/internal/handler"
+	"FGDSchemaBuilder/internal/service"
+	"net/http"
+)
 
-var mux = http.NewServeMux()
+const (
+	PathParse    = "/parse"
+	PathGenerate = "/generate"
+)
 
-type Routes struct {
-	PARSE    string
-	GENERATE string
-}
+func RegisterRoutes(mux *http.ServeMux) {
+	// 1. Inicializar los servicios (las herramientas)
+	parserSvc := service.NewParserService()
 
-var RoutesInstance = Routes{
-	PARSE:    "/parse",
-	GENERATE: "/generate",
-}
+	// 2. Inicializar los manejadores e inyectar sus servicios
+	parserHdl := handler.NewParserHandler(parserSvc)
 
-func GetMuxInstance() *http.ServeMux {
-	return mux
+	// 3. Registrar las rutas
+	mux.HandleFunc("POST "+PathParse, parserHdl.Parse)
 }
