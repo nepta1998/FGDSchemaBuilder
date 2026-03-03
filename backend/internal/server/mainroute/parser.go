@@ -6,5 +6,5 @@ import (
 )
 
 func ParseView() {
-	server.GetMuxInstance().HandleFunc(server.RoutesInstance.PARSE, handler.ParseHandler)
+	server.GetMuxInstance().HandleFunc("POST "+server.RoutesInstance.PARSE, handler.ParseHandler)
 }
