@@ -52,18 +52,18 @@ func (s *ParserService) parseMapSize(cleanedText string) (*models.MapSize, error
 	if match != nil {
 		min, err := strconv.Atoi(match[1])
 		if err != nil {
-			return &models.MapSize{}, fmt.Errorf("invalid min value: %v", err)
+			return nil, fmt.Errorf("invalid min value: %v", err)
 		}
 		max, err := strconv.Atoi(match[2])
 		if err != nil {
-			return &models.MapSize{}, fmt.Errorf("invalid max value: %v", err)
+			return nil, fmt.Errorf("invalid max value: %v", err)
 		}
 		return &models.MapSize{
 			Min: min,
 			Max: max,
 		}, nil
 	} else {
-		return &models.MapSize{}, fmt.Errorf("could not find @mapsize")
+		return nil, fmt.Errorf("could not find @mapsize")
 	}
 }
 

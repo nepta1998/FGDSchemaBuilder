@@ -10,7 +10,7 @@ type FGD struct {
 
 // Metadata contains global information about the FGD file.
 type Metadata struct {
-	MapSize  *MapSize `json:"mapsize,omitempty"`
+	MapSize  *MapSize `json:"mapsize"`
 	Includes []string `json:"includes"`
 }
 
