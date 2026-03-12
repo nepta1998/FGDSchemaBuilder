@@ -160,13 +160,13 @@ func (s *ParserService) parseProperties(propertiesText string) []models.Property
 			(strings.Contains(line, "(flags)") || strings.Contains(line, "(choices)"))
 		if isBlockProp {
 			for j := i + 1; j < len(cleanLines); j++ {
-				before, _, wasFind := strings.Cut(line, "]")
+				before, _, wasFind := strings.Cut(cleanLines[j], "]")
 				if wasFind {
 					blockContent += before
 					i = j
 					break
 				}
-				blockContent += line + "\n"
+				blockContent += cleanLines[j] + "\n"
 			}
 		}
 		if match := propRegex.FindStringSubmatch(line); match != nil {
