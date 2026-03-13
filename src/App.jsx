@@ -20,6 +20,11 @@ const FGDBuilder = () => {
     const [filterType, setFilterType] = useState('All');
     const [alphabeticalOrder, setAlphabeticalOrder] = useState(false);
 
+    // UI state for backend generation
+    const [isLoading, setIsLoading] = useState(false);
+    const [error, setError] = useState(null);
+    const [generatedText, setGeneratedText] = useState(null);
+
     const toggleTheme = () => {
         setTheme((currentTheme) => (currentTheme === 'light' ? 'dark' : 'light'));
     };
@@ -58,9 +63,30 @@ const FGDBuilder = () => {
     };
 
 
-    const handleExport = () => {
+    const handleExport = async () => {
+        setError(null);
+        setGeneratedText(null);
+        setIsLoading(true);
         try {
-            const fgdText = generateFGD(state);
+            // Send current state to backend for generation
+            const resp = await fetch('/generate', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ state })
+            });
+
+            if (!resp.ok) {
+                const errText = await resp.text();
+                setError(errText);
+                alert('Error generating FGD: ' + errText);
+                return;
+            }
+
+            const data = await resp.json();
+            // Backend is expected to return JSON like { fgd: '...' } or { text: '...' }
+            const fgdText = data.fgd || data.text || JSON.stringify(data);
+            setGeneratedText(fgdText);
+
             const defaultFileName = 'my_game.fgd';
             const fileName = window.prompt('Enter a filename for your FGD file:', defaultFileName);
 
@@ -84,7 +110,10 @@ const FGDBuilder = () => {
             URL.revokeObjectURL(url);
         } catch (error) {
             console.error('Failed to generate FGD file:', error);
+            setError(String(error));
             alert('Error generating FGD file. See console for details.');
+        } finally {
+            setIsLoading(false);
         }
     };
 
@@ -223,6 +252,12 @@ const FGDBuilder = () => {
                 <div className="panel panel-preview">
                     <FGDPreview />
                 </div>
+                {generatedText && (
+                    <div className="generated-output-panel">
+                        <h2>Generated FGD</h2>
+                        <pre style={{whiteSpace: 'pre-wrap', maxHeight: '40vh', overflow: 'auto'}}>{generatedText}</pre>
+                    </div>
+                )}
             </main>
         </div>
     );
