@@ -1,6 +1,6 @@
 import React, { useRef, useState } from 'react';
 import { FGDProvider, useFGD } from './context/FGDContext';
-import { parseFGD } from './core/FGDParser.js';
+
 import { generateFGD } from './core/FGDgenerator.js';
 import { EntityList } from './components/EntityList';
 import { EntityEditor } from './components/EntityEditor';
@@ -25,6 +25,10 @@ const FGDBuilder = () => {
     const [error, setError] = useState(null);
     const [generatedText, setGeneratedText] = useState(null);
 
+    // Parser state for importing FGD
+    const [parserLoading, setParserLoading] = useState(false);
+    const [parserError, setParserError] = useState(null);
+
     const toggleTheme = () => {
         setTheme((currentTheme) => (currentTheme === 'light' ? 'dark' : 'light'));
     };
@@ -39,14 +43,35 @@ const FGDBuilder = () => {
         if (!file) return;
 
         const reader = new FileReader();
-        reader.onload = (event) => {
+        reader.onload = async (event) => {
             const text = event.target.result;
+            setParserError(null);
+            setParserLoading(true);
             try {
-                const parsedSchema = parseFGD(text);
+                // Send text to backend parser
+                const resp = await fetch('/parser', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ text })
+                });
+
+                if (!resp.ok) {
+                    const errText = await resp.text();
+                    setParserError(errText);
+                    alert('Error parsing FGD: ' + errText);
+                    return;
+                }
+
+                const data = await resp.json();
+                // Expect parsed schema in data.schema or data.parsed; fallback to whole response
+                const parsedSchema = data.schema || data.parsed || data;
                 dispatch({ type: 'LOAD_FGD', payload: parsedSchema });
             } catch (error) {
                 console.error('Failed to parse FGD file:', error);
+                setParserError(String(error));
                 alert('Error parsing FGD file. See console for details.');
+            } finally {
+                setParserLoading(false);
             }
         };
         reader.readAsText(file);
