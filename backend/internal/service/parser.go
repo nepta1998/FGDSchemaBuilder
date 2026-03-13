@@ -2,11 +2,12 @@
 package service
 
 import (
-	"FGDSchemaBuilder/internal/models"
 	"fmt"
 	"regexp"
 	"strconv"
 	"strings"
+
+	"FGDSchemaBuilder/internal/models"
 
 	"github.com/google/uuid"
 )
@@ -81,20 +82,49 @@ func (s *ParserService) parseIncludes(cleanedText string) []string {
 }
 
 func (s *ParserService) parseEntityClasses(cleanedText string) []models.Entity {
-	const pattern = `@(\w+)\s*([\s\S]*?)\s*=\s*(\w+)\s*(?::\s*"([^"]*)")?\s*(?:\[([\s\S]*?)\])?`
-	re := regexp.MustCompile(pattern)
-	matches := re.FindAllStringSubmatch(cleanedText, -1)
+	// Usamos (?s) para multilínea y ajustamos los espacios opcionales
+	// const pattern = `(?s)@(\w+)\s*(.*?)\s*=\s*(\w+)\s*(?::\s*"([^"]*)")?\s*(?:\[\s*(.*?)\s*\])?`
 
-	entities := make([]models.Entity, 0, len(matches))
-	for _, m := range matches {
-		if len(m) < 6 {
-			continue
+	const pattern = `(?s)@(\w+)\s*([^=]*?)\s*=\s*(\w+)\s*(?::\s*"([^"]*)")?\s*`
+	re := regexp.MustCompile(pattern)
+
+	allIndices := re.FindAllStringSubmatchIndex(cleanedText, -1)
+	entities := make([]models.Entity, 0, len(allIndices))
+	for i, loc := range allIndices {
+		// loc[0], loc[1] es todo el match
+		// loc[2], loc[3] es ClassType (@...)
+		// loc[4], loc[5] es Header (base, size, etc)
+		// loc[6], loc[7] es Name (= name)
+		// loc[8], loc[9] es Description (: "desc")
+
+		classType := cleanedText[loc[2]:loc[3]]
+		header := strings.TrimSpace(cleanedText[loc[4]:loc[5]])
+		name := cleanedText[loc[6]:loc[7]]
+
+		description := ""
+		if loc[8] != -1 {
+			description = cleanedText[loc[8]:loc[9]]
 		}
-		classType := m[1]
-		header := m[2]
-		name := m[3]
-		description := m[4]
-		body := m[5]
+
+		// 2. Extraer el cuerpo [ ... ] de forma balanceada
+		body := ""
+		remaining := cleanedText[loc[1]:] // Texto después de la descripción
+
+		// Buscamos si lo siguiente (ignorando espacios) es un corchete
+		potentialStart := strings.Index(remaining, "[")
+
+		// Verificamos que el '[' esté antes de la siguiente entidad @
+		nextEntityStart := -1
+		if i+1 < len(allIndices) {
+			nextEntityStart = allIndices[i+1][0] - loc[1]
+		}
+
+		if potentialStart != -1 && (nextEntityStart == -1 || potentialStart < nextEntityStart) {
+			content, endPos := s.extractBalancedBlock(remaining[potentialStart:])
+			if endPos != -1 {
+				body = content
+			}
+		}
 
 		entity := models.Entity{
 			ID:          uuid.New().String(),
@@ -107,7 +137,55 @@ func (s *ParserService) parseEntityClasses(cleanedText string) []models.Entity {
 		}
 		entities = append(entities, entity)
 	}
+
 	return entities
+
+	// matches := re.FindAllStringSubmatch(cleanedText, -1)
+	//
+	// entities := make([]models.Entity, 0, len(matches))
+	// for _, m := range matches {
+	// 	if len(m) < 6 {
+	// 		continue
+	// 	}
+	// 	classType := m[1]
+	// 	header := m[2]
+	// 	name := m[3]
+	// 	description := m[4]
+	// 	body := m[5]
+	//
+	// 	entity := models.Entity{
+	// 		ID:          uuid.New().String(),
+	// 		ClassType:   classType,
+	// 		Name:        name,
+	// 		Description: description,
+	// 		BaseClasses: s.parseBaseClasses(header),
+	// 		Helpers:     s.parseHelpers(header),
+	// 		Properties:  s.parseProperties(body),
+	// 	}
+	// 	entities = append(entities, entity)
+	// }
+	// return entities
+}
+
+func (s *ParserService) extractBalancedBlock(input string) (string, int) {
+	stack := 0
+	start := -1
+	for i, char := range input {
+		// El "tagged switch" es esto:
+		switch char {
+		case '[':
+			if stack == 0 {
+				start = i
+			}
+			stack++
+		case ']':
+			stack--
+			if stack == 0 && start != -1 {
+				return input[start+1 : i], i
+			}
+		}
+	}
+	return "", -1
 }
 
 func (s *ParserService) parseBaseClasses(baseClassesText string) []string {
@@ -143,6 +221,9 @@ func (s *ParserService) parseHelpers(helpersText string) models.Helpers {
 }
 
 func (s *ParserService) parseProperties(propertiesText string) []models.Property {
+	if propertiesText == "" {
+		return []models.Property{}
+	}
 	lines := strings.Split(propertiesText, "\n")
 	cleanLines := make([]string, 0, len(lines))
 	for _, line := range lines {
@@ -157,16 +238,31 @@ func (s *ParserService) parseProperties(propertiesText string) []models.Property
 	for i := 0; i < len(cleanLines); i++ {
 		line := cleanLines[i]
 		isBlockProp := strings.Contains(line, "=") &&
-			(strings.Contains(line, "(flags)") || strings.Contains(line, "(choices)"))
+			(strings.Contains(strings.ToLower(line), "(flags)") ||
+				strings.Contains(strings.ToLower(line), "(choices)"))
 		if isBlockProp {
-			for j := i + 1; j < len(cleanLines); j++ {
-				before, _, wasFind := strings.Cut(cleanLines[j], "]")
+			for j := i ; j < len(cleanLines); j++ {
+				content := ""
+				find := false
+				if i == j {
+					startIndex := strings.Index(cleanLines[j], "=")
+
+					if startIndex != -1 {
+						content = cleanLines[j][startIndex+1:]
+						find = true
+					}
+				}
+				if !find {
+					content = cleanLines[j]
+				}
+				before, _, wasFind := strings.Cut(content, "]")
 				if wasFind {
 					blockContent += before
 					i = j
 					break
 				}
-				blockContent += cleanLines[j] + "\n"
+				blockContent += content + "\n"
+				find = false
 			}
 		}
 		if match := propRegex.FindStringSubmatch(line); match != nil {
@@ -182,6 +278,8 @@ func (s *ParserService) parseProperties(propertiesText string) []models.Property
 			if blockContent != "" {
 				isFlags := strings.ToLower(typeMatch) == "flags"
 				if isFlags {
+					replacer := strings.NewReplacer("[", "", "]", "")
+					blockContent = replacer.Replace(blockContent)
 					options = s.parseFlags(fmt.Sprintf("[%s]", blockContent))
 				} else {
 					options = s.parseChoices(blockContent)
@@ -207,7 +305,7 @@ func (s *ParserService) parseProperties(propertiesText string) []models.Property
 }
 
 func (s *ParserService) parseFlags(flagsLine string) []models.Option {
-	re := regexp.MustCompile(`(\w+)\s*=\s*(-?\d+)`)
+	re := regexp.MustCompile(`\[(?s)(.*)\]`)
 	match := re.FindStringSubmatch(flagsLine)
 	if match == nil {
 		return []models.Option{}
