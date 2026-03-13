@@ -42,17 +42,18 @@ const FGDBuilder = () => {
         const file = e.target.files[0];
         if (!file) return;
 
-        const reader = new FileReader();
-        reader.onload = async (event) => {
-            const text = event.target.result;
-            setParserError(null);
-            setParserLoading(true);
+        // Upload the file as multipart/form-data to the backend (/parse)
+        // TODO: backend expects form field name 'file'
+        const formData = new FormData();
+        formData.append('file', file);
+
+        setParserError(null);
+        setParserLoading(true);
+        (async () => {
             try {
-                // Send text to backend parser
-                const resp = await fetch('/parser', {
+                const resp = await fetch('/parse', {
                     method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ text })
+                    body: formData
                 });
 
                 if (!resp.ok) {
@@ -63,7 +64,6 @@ const FGDBuilder = () => {
                 }
 
                 const data = await resp.json();
-                // Expect parsed schema in data.schema or data.parsed; fallback to whole response
                 const parsedSchema = data.schema || data.parsed || data;
                 dispatch({ type: 'LOAD_FGD', payload: parsedSchema });
             } catch (error) {
@@ -73,8 +73,7 @@ const FGDBuilder = () => {
             } finally {
                 setParserLoading(false);
             }
-        };
-        reader.readAsText(file);
+        })();
 
         // Reset the input value to allow re-uploading the same file
         e.target.value = null;
@@ -97,7 +96,7 @@ const FGDBuilder = () => {
             const resp = await fetch('/generate', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ state })
+                body: JSON.stringify(state)
             });
 
             if (!resp.ok) {
