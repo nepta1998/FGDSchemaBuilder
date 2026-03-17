@@ -5,6 +5,7 @@ import (
 	"log"
 	"log/slog"
 	"net/http"
+	"os"
 
 	"FGDSchemaBuilder/internal/server"
 )
@@ -17,9 +18,15 @@ func main() {
 	server.RegisterRoutes(mux)
 
 	slog.Log(context.TODO(), slog.LevelInfo, "Server started", "port", "8000")
+	port := os.Getenv("PORT")
+	
+	// 2. Si no existe (ej. corriendo localmente), usa uno por defecto
+	if port == "" {
+		port = "8000"
+	}
 
 	// Escuchar y servir usando el mux local
-	err := http.ListenAndServe(":8000", mux)
+	err := http.ListenAndServe("0.0.0.0:"+port, mux)
 	if err != nil {
 		log.Fatal(err)
 	}
