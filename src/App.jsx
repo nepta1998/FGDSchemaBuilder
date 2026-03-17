@@ -1,6 +1,6 @@
 import React, { useRef, useState } from 'react';
 import { FGDProvider, useFGD } from './context/FGDContext';
-import { parseFGD } from './core/FGDParser.js';
+
 import { generateFGD } from './core/FGDgenerator.js';
 import { EntityList } from './components/EntityList';
 import { EntityEditor } from './components/EntityEditor';
@@ -20,6 +20,15 @@ const FGDBuilder = () => {
     const [filterType, setFilterType] = useState('All');
     const [alphabeticalOrder, setAlphabeticalOrder] = useState(false);
 
+    // UI state for backend generation
+    const [isLoading, setIsLoading] = useState(false);
+    const [error, setError] = useState(null);
+    const [generatedText, setGeneratedText] = useState(null);
+
+    // Parser state for importing FGD
+    const [parserLoading, setParserLoading] = useState(false);
+    const [parserError, setParserError] = useState(null);
+
     const toggleTheme = () => {
         setTheme((currentTheme) => (currentTheme === 'light' ? 'dark' : 'light'));
     };
@@ -33,18 +42,38 @@ const FGDBuilder = () => {
         const file = e.target.files[0];
         if (!file) return;
 
-        const reader = new FileReader();
-        reader.onload = (event) => {
-            const text = event.target.result;
+        // Upload the file as multipart/form-data to the backend (/parse)
+        // TODO: backend expects form field name 'file'
+        const formData = new FormData();
+        formData.append('file', file);
+
+        setParserError(null);
+        setParserLoading(true);
+        (async () => {
             try {
-                const parsedSchema = parseFGD(text);
+                const resp = await fetch('/parse', {
+                    method: 'POST',
+                    body: formData
+                });
+
+                if (!resp.ok) {
+                    const errText = await resp.text();
+                    setParserError(errText);
+                    alert('Error parsing FGD: ' + errText);
+                    return;
+                }
+
+                const data = await resp.json();
+                const parsedSchema = data.schema || data.parsed || data;
                 dispatch({ type: 'LOAD_FGD', payload: parsedSchema });
             } catch (error) {
                 console.error('Failed to parse FGD file:', error);
+                setParserError(String(error));
                 alert('Error parsing FGD file. See console for details.');
+            } finally {
+                setParserLoading(false);
             }
-        };
-        reader.readAsText(file);
+        })();
 
         // Reset the input value to allow re-uploading the same file
         e.target.value = null;
@@ -58,9 +87,30 @@ const FGDBuilder = () => {
     };
 
 
-    const handleExport = () => {
+    const handleExport = async () => {
+        setError(null);
+        setGeneratedText(null);
+        setIsLoading(true);
         try {
-            const fgdText = generateFGD(state);
+            // Send current state to backend for generation
+            const resp = await fetch('/generate', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(state)
+            });
+
+            if (!resp.ok) {
+                const errText = await resp.text();
+                setError(errText);
+                alert('Error generating FGD: ' + errText);
+                return;
+            }
+
+            const data = await resp.json();
+            // Backend is expected to return JSON like { fgd: '...' } or { text: '...' }
+            const fgdText = data.fgd || data.text || JSON.stringify(data);
+            setGeneratedText(fgdText);
+
             const defaultFileName = 'my_game.fgd';
             const fileName = window.prompt('Enter a filename for your FGD file:', defaultFileName);
 
@@ -84,7 +134,10 @@ const FGDBuilder = () => {
             URL.revokeObjectURL(url);
         } catch (error) {
             console.error('Failed to generate FGD file:', error);
+            setError(String(error));
             alert('Error generating FGD file. See console for details.');
+        } finally {
+            setIsLoading(false);
         }
     };
 
@@ -223,6 +276,12 @@ const FGDBuilder = () => {
                 <div className="panel panel-preview">
                     <FGDPreview />
                 </div>
+                {generatedText && (
+                    <div className="generated-output-panel">
+                        <h2>Generated FGD</h2>
+                        <pre style={{whiteSpace: 'pre-wrap', maxHeight: '40vh', overflow: 'auto'}}>{generatedText}</pre>
+                    </div>
+                )}
             </main>
         </div>
     );
