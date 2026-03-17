@@ -89,7 +89,6 @@ const FGDBuilder = () => {
 
     const handleExport = async () => {
         setError(null);
-        setGeneratedText(null);
         setIsLoading(true);
         try {
             // Send current state to backend for generation
@@ -98,6 +97,7 @@ const FGDBuilder = () => {
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify(state)
             });
+            console.log(resp);
 
             if (!resp.ok) {
                 const errText = await resp.text();
@@ -106,10 +106,9 @@ const FGDBuilder = () => {
                 return;
             }
 
-            const data = await resp.json();
-            // Backend is expected to return JSON like { fgd: '...' } or { text: '...' }
-            const fgdText = data.fgd || data.text || JSON.stringify(data);
-            setGeneratedText(fgdText);
+            // Backend returns plain text (FGD)
+            const fgdText = await resp.text();
+            // Skip showing preview; only download the file
 
             const defaultFileName = 'my_game.fgd';
             const fileName = window.prompt('Enter a filename for your FGD file:', defaultFileName);
@@ -276,12 +275,6 @@ const FGDBuilder = () => {
                 <div className="panel panel-preview">
                     <FGDPreview />
                 </div>
-                {generatedText && (
-                    <div className="generated-output-panel">
-                        <h2>Generated FGD</h2>
-                        <pre style={{whiteSpace: 'pre-wrap', maxHeight: '40vh', overflow: 'auto'}}>{generatedText}</pre>
-                    </div>
-                )}
             </main>
         </div>
     );
