@@ -12,9 +12,6 @@ export const EntityEditor = () => {
     const selectedEntity = state.entities.find(
         (e) => e.id === state.selectedEntityId
     );
-    console.log(selectedEntity);
-    console.log("tests");
-
     // If no entity is selected, show a placeholder message
     if (!selectedEntity) {
         return (
